@@ -47,6 +47,3 @@ local.properties
 
 # Coverage
 coverage/
-
-# VS Code
-.vscode/
