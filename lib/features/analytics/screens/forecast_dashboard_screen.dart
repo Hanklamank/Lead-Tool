@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:syncfusion_flutter_charts/charts.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../../../core/models/forecast_data.dart';
-import '../../../core/providers/forecast_provider.dart';
+import '../../../core/providers/mock_forecast_provider.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_view.dart';
 import '../widgets/deal_risk_card.dart';
@@ -15,7 +15,7 @@ class ForecastDashboardScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final forecast = ref.watch(forecastProvider);
+    final forecast = ref.watch(mockForecastProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -23,14 +23,14 @@ class ForecastDashboardScreen extends ConsumerWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () => ref.refresh(forecastProvider),
+            onPressed: () => ref.refresh(mockForecastProvider),
           ),
         ],
       ),
       body: forecast.when(
         data: (data) => RefreshIndicator(
           onRefresh: () async {
-            ref.invalidate(forecastProvider);
+            ref.invalidate(mockForecastProvider);
           },
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -49,7 +49,7 @@ class ForecastDashboardScreen extends ConsumerWidget {
         loading: () => const LoadingIndicator(message: 'Loading forecast data...'),
         error: (err, stack) => ErrorView(
           error: err,
-          onRetry: () => ref.refresh(forecastProvider),
+          onRetry: () => ref.refresh(mockForecastProvider),
         ),
       ),
     );
@@ -75,7 +75,7 @@ class ForecastDashboardScreen extends ConsumerWidget {
           Expanded(
             child: _SummaryCard(
               title: 'Upside',
-              value: currencyFormat.format(data.upsidePotential / 1000) + 'K',
+              value: '${currencyFormat.format(data.upsidePotential / 1000)}K',
               subtitle: 'potential',
               color: Colors.green,
               icon: Icons.trending_up,
@@ -85,7 +85,7 @@ class ForecastDashboardScreen extends ConsumerWidget {
           Expanded(
             child: _SummaryCard(
               title: 'Churn Risk',
-              value: currencyFormat.format(data.arrAtRisk / 1000) + 'K',
+              value: '${currencyFormat.format(data.arrAtRisk / 1000)}K',
               subtitle: 'ARR at risk',
               color: Colors.red,
               icon: Icons.priority_high,
@@ -123,64 +123,82 @@ class ForecastDashboardScreen extends ConsumerWidget {
             const SizedBox(height: 24),
             SizedBox(
               height: 300,
-              child: SfCartesianChart(
-                primaryXAxis: CategoryAxis(
-                  majorGridLines: const MajorGridLines(width: 0),
-                ),
-                primaryYAxis: NumericAxis(
-                  numberFormat: NumberFormat.compact(),
-                  axisLine: const AxisLine(width: 0),
-                  majorTickLines: const MajorTickLines(size: 0),
-                ),
-                legend: Legend(
-                  isVisible: true,
-                  position: LegendPosition.bottom,
-                ),
-                tooltipBehavior: TooltipBehavior(enable: true),
-                series: <ChartSeries>[
-                  RangeAreaSeries<ForecastData, String>(
-                    dataSource: data.forecast,
-                    xValueMapper: (d, _) => 'Month ${d.month}',
-                    highValueMapper: (d, _) => d.confidenceHigh,
-                    lowValueMapper: (d, _) => d.confidenceLow,
-                    name: 'Confidence Range',
-                    opacity: 0.3,
-                    color: Colors.blue.withOpacity(0.3),
-                    borderWidth: 0,
-                  ),
-                  LineSeries<ForecastData, String>(
-                    dataSource: data.forecast,
-                    xValueMapper: (d, _) => 'Month ${d.month}',
-                    yValueMapper: (d, _) => d.predictedRevenue,
-                    name: 'Predicted',
-                    color: Colors.blue,
-                    width: 3,
-                    markerSettings: const MarkerSettings(
-                      isVisible: true,
-                      height: 6,
-                      width: 6,
-                      borderWidth: 2,
-                      borderColor: Colors.white,
+              child: LineChart(
+                LineChartData(
+                  gridData: FlGridData(show: true),
+                  titlesData: FlTitlesData(
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        getTitlesWidget: (value, meta) {
+                          if (value.toInt() < data.forecast.length) {
+                            return Text('M${value.toInt() + 1}');
+                          }
+                          return const Text('');
+                        },
+                      ),
                     ),
-                  ),
-                  LineSeries<ForecastData, String>(
-                    dataSource: data.forecast.where((d) => d.actualRevenue > 0).toList(),
-                    xValueMapper: (d, _) => 'Month ${d.month}',
-                    yValueMapper: (d, _) => d.actualRevenue,
-                    name: 'Actual',
-                    color: Colors.green,
-                    width: 3,
-                    dashArray: const [5, 5],
-                    markerSettings: const MarkerSettings(
-                      isVisible: true,
-                      height: 6,
-                      width: 6,
-                      borderWidth: 2,
-                      borderColor: Colors.white,
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 50,
+                        getTitlesWidget: (value, meta) {
+                          return Text(
+                            '${(value / 1000).toStringAsFixed(0)}K',
+                            style: const TextStyle(fontSize: 10),
+                          );
+                        },
+                      ),
                     ),
+                    topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
                   ),
-                ],
+                  borderData: FlBorderData(show: true),
+                  lineBarsData: [
+                    // Predicted Revenue Line
+                    LineChartBarData(
+                      spots: data.forecast.asMap().entries.map((e) {
+                        return FlSpot(
+                          e.key.toDouble(),
+                          e.value.predictedRevenue,
+                        );
+                      }).toList(),
+                      isCurved: true,
+                      color: Colors.blue,
+                      barWidth: 3,
+                      dotData: const FlDotData(show: true),
+                    ),
+                    // Actual Revenue Line (if available)
+                    if (data.forecast.any((d) => d.actualRevenue > 0))
+                      LineChartBarData(
+                        spots: data.forecast
+                            .asMap()
+                            .entries
+                            .where((e) => e.value.actualRevenue > 0)
+                            .map((e) {
+                          return FlSpot(
+                            e.key.toDouble(),
+                            e.value.actualRevenue,
+                          );
+                        }).toList(),
+                        isCurved: true,
+                        color: Colors.green,
+                        barWidth: 3,
+                        dotData: const FlDotData(show: true),
+                        dashArray: [5, 5],
+                      ),
+                  ],
+                ),
               ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _ChartLegend(color: Colors.blue, label: 'Predicted'),
+                const SizedBox(width: 16),
+                _ChartLegend(color: Colors.green, label: 'Actual'),
+              ],
             ),
           ],
         ),
@@ -252,7 +270,7 @@ class ForecastDashboardScreen extends ConsumerWidget {
               ),
               const Spacer(),
               Chip(
-                label: Text(currencyFormat.format(data.upsidePotential / 1000) + 'K'),
+                label: Text('${currencyFormat.format(data.upsidePotential / 1000)}K'),
                 backgroundColor: Colors.green.withOpacity(0.2),
                 labelStyle: TextStyle(
                   color: Colors.green[700],
@@ -296,7 +314,7 @@ class ForecastDashboardScreen extends ConsumerWidget {
               ),
               const Spacer(),
               Chip(
-                label: Text(currencyFormat.format(data.arrAtRisk / 1000) + 'K ARR'),
+                label: Text('${currencyFormat.format(data.arrAtRisk / 1000)}K ARR'),
                 backgroundColor: Colors.red.withOpacity(0.2),
                 labelStyle: TextStyle(
                   color: Colors.red[700],
@@ -367,6 +385,31 @@ class _SummaryCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ChartLegend extends StatelessWidget {
+  final Color color;
+  final String label;
+
+  const _ChartLegend({
+    required this.color,
+    required this.label,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 16,
+          height: 3,
+          color: color,
+        ),
+        const SizedBox(width: 8),
+        Text(label, style: const TextStyle(fontSize: 12)),
+      ],
     );
   }
 }
