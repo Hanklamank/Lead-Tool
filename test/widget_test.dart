@@ -5,26 +5,48 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
-import 'package:flutter_test/flutter_test.dart';
+import 'dart:io';
+import 'dart:ui';
 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:salesai_pro/main.dart';
 
+class TestHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) {
+    return super.createHttpClient(context)
+      ..badCertificateCallback =
+          (X509Certificate cert, String host, int port) => true;
+  }
+}
+
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  setUpAll(() {
+    HttpOverrides.global = TestHttpOverrides();
+  });
+
+  testWidgets('Dashboard smoke test (Desktop)', (WidgetTester tester) async {
+    // Set viewport to desktop size
+    tester.view.physicalSize = const Size(1400, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+    // ProviderScope is needed because the app uses Riverpod
+    await tester.pumpWidget(
+      const ProviderScope(
+        child: SalesAIProApp(),
+      ),
+    );
+    await tester.pumpAndSettle(); // Wait for data to load
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    // Verify that the dashboard title is present (Desktop Sidebar)
+    expect(find.text('SalesAI Pro'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify that we are on the dashboard (SalesAI Pro title in AppBar or sidebar)
+    // Note: The mobile layout has 'SalesAI Pro' in AppBar.
+    // The desktop layout has 'SalesAI Pro' in sidebar.
   });
 }

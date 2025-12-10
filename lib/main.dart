@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:salesai_pro/core/providers/auth_provider.dart';
+import 'package:salesai_pro/features/dashboard/screens/leads_detail_screen.dart';
+import 'package:salesai_pro/features/dashboard/screens/main_dashboard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'core/providers/auth_provider.dart';
-import 'features/analytics/screens/forecast_dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -78,12 +79,12 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _selectedIndex = 0;
 
-  static const List<Widget> _screens = [
-    ForecastDashboardScreen(),
-    LeadsPlaceholderScreen(title: 'Leads'),
-    PipelinePlaceholderScreen(title: 'Pipeline'),
-    OutreachPlaceholderScreen(title: 'Outreach'),
-    AnalyticsPlaceholderScreen(title: 'Analytics'),
+  static final List<Widget> _screens = [
+    const MainDashboard(),
+    const LeadsDetailScreen(),
+    const PipelinePlaceholderScreen(title: 'Pipeline'),
+    const OutreachPlaceholderScreen(title: 'Outreach'),
+    const AnalyticsPlaceholderScreen(title: 'Analytics'),
   ];
 
   void _onItemTapped(int index) {
@@ -103,7 +104,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           NavigationDestination(
             icon: Icon(Icons.dashboard_outlined),
             selectedIcon: Icon(Icons.dashboard),
-            label: 'Forecast',
+            label: 'Dashboard',
           ),
           NavigationDestination(
             icon: Icon(Icons.people_outline),
